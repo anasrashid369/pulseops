@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# CDK output
+cdk.out/
+**/cdk.out/
+
+# Build artifacts
+*.js.map
+dist/
+build/
+
+# Environment/secrets
+.env
+.env.local
+*.pem
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Flutter (once you add it)
+mobile/**/build/
+mobile/**/.dart_tool/
