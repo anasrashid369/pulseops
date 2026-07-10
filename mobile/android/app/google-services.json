@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "313553043691",
+    "project_id": "pulseops-666",
+    "storage_bucket": "pulseops-666.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:313553043691:android:be61dc4ad47086cfd1feae",
+        "android_client_info": {
+          "package_name": "com.example.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhrOuO1QXvRopQlAhkBSER30GnCc8lx2s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

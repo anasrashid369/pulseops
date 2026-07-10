@@ -1,5 +1,5 @@
 {
-  "name": "backend",
+  "name": "ingest-alert",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -10,11 +10,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "aws-sdk": "^2.1693.0",
+    "@aws-sdk/client-ssm": "^3.1084.0",
     "firebase-admin": "^14.1.0"
-  },
-  "devDependencies": {
-    "@types/node": "^26.1.0",
-    "typescript": "^6.0.3"
   }
 }

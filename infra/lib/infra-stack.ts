@@ -17,15 +17,23 @@ export class InfraStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY, // ok for a dev project
     });
 
-    // Ingest Lambda
+  // Ingest Lambda
     const ingestFn = new lambda.Function(this, 'IngestAlertFunction', {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'index.handler',
       code: lambda.Code.fromAsset('../backend/src/handlers/ingest-alert'),
-      environment: { TABLE_NAME: table.tableName },
+      environment: {
+        TABLE_NAME: table.tableName,
+        TEST_DEVICE_TOKEN: 'eGQuj4deQtWirYJokaZFA8:APA91bFcNYA-NkQ-h45PV7kEZpnxWNwma82YkLSwLisEgONDD95jgNXXQL0DXoOGP7u-FldMKmVOAKU4PN9zHcWBKfaOwz8nNKIPwRSR2ZiOpkdcQ9FVq74',
+      },
+      timeout: cdk.Duration.seconds(15),
       logRetention: logs.RetentionDays.TWO_WEEKS,
     });
     table.grantWriteData(ingestFn);
+    ingestFn.addToRolePolicy(new cdk.aws_iam.PolicyStatement({
+      actions: ['ssm:GetParameter'],
+      resources: [`arn:aws:ssm:${this.region}:${this.account}:parameter/pulseops/fcm-service-account`],
+    }));
 
     // Resolve Lambda
     const resolveFn = new lambda.Function(this, 'ResolveIncidentFunction', {
