@@ -27,3 +27,6 @@ Thumbs.db
 # Flutter (once you add it)
 mobile/**/build/
 mobile/**/.dart_tool/
+
+# Firebase secrets
+backend/*firebase-adminsdk*.json
