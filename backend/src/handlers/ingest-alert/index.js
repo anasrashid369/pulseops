@@ -1,6 +1,7 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, PutCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, PutCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 const { SSMClient, GetParameterCommand } = require("@aws-sdk/client-ssm");
+const { SchedulerClient, CreateScheduleCommand } = require("@aws-sdk/client-scheduler");
 const { initializeApp, cert } = require("firebase-admin/app");
 const { getMessaging } = require("firebase-admin/messaging");
 const { randomUUID } = require("crypto");
@@ -8,25 +9,20 @@ const { randomUUID } = require("crypto");
 const dynamoClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 const ssmClient = new SSMClient({});
+const schedulerClient = new SchedulerClient({});
 
 let firebaseApp;
 
 async function getFirebaseApp() {
   if (firebaseApp) return firebaseApp;
-
   const param = await ssmClient.send(
     new GetParameterCommand({
       Name: "/pulseops/fcm-service-account",
       WithDecryption: true,
     })
   );
-
   const serviceAccount = JSON.parse(param.Parameter.Value);
-
-  firebaseApp = initializeApp({
-    credential: cert(serviceAccount),
-  });
-
+  firebaseApp = initializeApp({ credential: cert(serviceAccount) });
   return firebaseApp;
 }
 
@@ -36,13 +32,13 @@ exports.handler = async (event) => {
     const incidentId = randomUUID();
     const timestamp = new Date().toISOString();
 
-    const item = {
+   const item = {
       incidentId,
       status: "open",
       message: body.message || "No message provided",
       timestamp,
+      history: [{ status: "open", timestamp, note: "Incident created" }],
     };
-
     await docClient.send(
       new PutCommand({
         TableName: process.env.TABLE_NAME,
@@ -50,10 +46,18 @@ exports.handler = async (event) => {
       })
     );
 
-    // Send push notification
     try {
       await getFirebaseApp();
-      const deviceToken = process.env.TEST_DEVICE_TOKEN;
+      const scheduleResult = await docClient.send(
+        new GetCommand({
+          TableName: process.env.ONCALL_TABLE_NAME,
+          Key: { scheduleId: "default" },
+        })
+      );
+      const schedule = scheduleResult.Item;
+      const deviceToken =
+        schedule?.rotation?.[schedule.currentIndex]?.deviceToken ||
+        process.env.TEST_DEVICE_TOKEN;
 
       if (deviceToken) {
         await getMessaging().send({
@@ -71,8 +75,28 @@ exports.handler = async (event) => {
         console.log("No device token configured, skipping push");
       }
     } catch (pushError) {
-      // Don't fail the whole request if push fails - incident is still recorded
       console.error("Failed to send push notification:", pushError);
+    }
+
+    try {
+      const scheduleTime = new Date(Date.now() + 60 * 1000);
+      const isoTime = scheduleTime.toISOString().split(".")[0];
+      await schedulerClient.send(
+        new CreateScheduleCommand({
+          Name: `escalate-${incidentId}`,
+          ScheduleExpression: `at(${isoTime})`,
+          FlexibleTimeWindow: { Mode: "OFF" },
+          Target: {
+            Arn: process.env.ESCALATE_FUNCTION_ARN,
+            RoleArn: process.env.SCHEDULER_ROLE_ARN,
+            Input: JSON.stringify({ incidentId }),
+          },
+          ActionAfterCompletion: "DELETE",
+        })
+      );
+      console.log("Escalation check scheduled for", scheduleTime.toISOString());
+    } catch (scheduleError) {
+      console.error("Failed to schedule escalation:", scheduleError);
     }
 
     return {

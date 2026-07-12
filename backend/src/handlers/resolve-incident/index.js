@@ -7,14 +7,20 @@ const docClient = DynamoDBDocumentClient.from(client);
 exports.handler = async (event) => {
   try {
     const incidentId = event.pathParameters.id;
+    const ackTimestamp = new Date().toISOString();
 
     const result = await docClient.send(
       new UpdateCommand({
         TableName: process.env.TABLE_NAME,
         Key: { incidentId },
-        UpdateExpression: "SET #status = :status",
+        UpdateExpression:
+          "SET #status = :status, history = list_append(if_not_exists(history, :emptyList), :newEntry)",
         ExpressionAttributeNames: { "#status": "status" },
-        ExpressionAttributeValues: { ":status": "acknowledged" },
+        ExpressionAttributeValues: {
+          ":status": "acknowledged",
+          ":emptyList": [],
+          ":newEntry": [{ status: "acknowledged", timestamp: ackTimestamp, note: "Acknowledged by on-call" }],
+        },
         ReturnValues: "ALL_NEW",
       })
     );
