@@ -105,6 +105,16 @@ export class InfraStack extends cdk.Stack {
 
     const alerts = api.root.addResource('alerts');
     alerts.addMethod('POST', new apigateway.LambdaIntegration(ingestFn));
+    // List Incidents Lambda
+    const listIncidentsFn = new lambda.Function(this, 'ListIncidentsFunction', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('../backend/src/handlers/list-incidents'),
+      environment: { TABLE_NAME: table.tableName },
+      logRetention: logs.RetentionDays.TWO_WEEKS,
+    });
+    table.grantReadData(listIncidentsFn);
+    alerts.addMethod('GET', new apigateway.LambdaIntegration(listIncidentsFn));
 
     // Get Incident Lambda
     const getIncidentFn = new lambda.Function(this, 'GetIncidentFunction', {
