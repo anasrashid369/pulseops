@@ -5,6 +5,7 @@ const { SchedulerClient, CreateScheduleCommand } = require("@aws-sdk/client-sche
 const { initializeApp, cert } = require("firebase-admin/app");
 const { getMessaging } = require("firebase-admin/messaging");
 const { randomUUID } = require("crypto");
+const { classifySeverity } = require("./triage");
 
 const dynamoClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
@@ -31,14 +32,29 @@ exports.handler = async (event) => {
     const body = JSON.parse(event.body || "{}");
     const incidentId = randomUUID();
     const timestamp = new Date().toISOString();
+    const message = body.message || "No message provided";
 
-   const item = {
+    let severity = "warning";
+    let severityReason = "Default classification (AI triage unavailable)";
+    try {
+      const classification = await classifySeverity(message);
+      severity = classification.severity;
+      severityReason = classification.reason;
+      console.log("Severity classified:", severity, "-", severityReason);
+    } catch (triageError) {
+      console.error("Triage classification failed, using default:", triageError);
+    }
+
+    const item = {
       incidentId,
       status: "open",
-      message: body.message || "No message provided",
+      message,
       timestamp,
-      history: [{ status: "open", timestamp, note: "Incident created" }],
+      severity,
+      severityReason,
+      history: [{ status: "open", timestamp, note: `Incident created (severity: ${severity})` }],
     };
+
     await docClient.send(
       new PutCommand({
         TableName: process.env.TABLE_NAME,
@@ -60,9 +76,13 @@ exports.handler = async (event) => {
         process.env.TEST_DEVICE_TOKEN;
 
       if (deviceToken) {
+        const titlePrefix =
+          item.severity === "critical" ? "🔴 CRITICAL" :
+          item.severity === "warning" ? "🟡 WARNING" : "🔵 INFO";
+
         await getMessaging().send({
           notification: {
-            title: "New Incident",
+            title: `${titlePrefix}: New Incident`,
             body: item.message,
           },
           data: {

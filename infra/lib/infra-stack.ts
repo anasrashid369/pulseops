@@ -66,7 +66,7 @@ export class InfraStack extends cdk.Stack {
         ESCALATE_FUNCTION_ARN: escalateFn.functionArn,
         SCHEDULER_ROLE_ARN: schedulerRole.roleArn,
       },
-      timeout: cdk.Duration.seconds(15),
+      timeout: cdk.Duration.seconds(20),
       logRetention: logs.RetentionDays.TWO_WEEKS,
     });
     table.grantWriteData(ingestFn);
@@ -74,6 +74,10 @@ export class InfraStack extends cdk.Stack {
     ingestFn.addToRolePolicy(new iam.PolicyStatement({
       actions: ['ssm:GetParameter'],
       resources: [`arn:aws:ssm:${this.region}:${this.account}:parameter/pulseops/fcm-service-account`],
+    }));
+    ingestFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['ssm:GetParameter'],
+      resources: [`arn:aws:ssm:${this.region}:${this.account}:parameter/pulseops/gemini-api-key`],
     }));
     ingestFn.addToRolePolicy(new iam.PolicyStatement({
       actions: ['scheduler:CreateSchedule'],
