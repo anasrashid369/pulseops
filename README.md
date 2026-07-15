@@ -4,10 +4,6 @@ A serverless, AI-assisted incident alerting and on-call platform — a scaled-do
 
 When something breaks in production, engineering teams need to be paged immediately, with automatic escalation if the on-call engineer doesn't respond. PulseOps implements that entire loop: ingest an alert, classify its severity with AI, push a notification to the on-call engineer's phone, and automatically escalate to the next person in rotation if it goes unacknowledged — with a full audit trail of everything that happened.
 
-## Demo
-
-*(video link goes here once recorded)*
-
 ## Architecture
 Webhook (curl/monitoring tool)
 ↓
